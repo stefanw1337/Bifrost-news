@@ -1,5 +1,5 @@
 # Bifrost-news
-An addon for Bifrost to add news to Project Tahiti servers
+An addon for Bifrost from Tahiti Project to add news
 
 Start the launcher with Start-Bifrost-news.bat and it will fetch news then launch Bifrost.
 
