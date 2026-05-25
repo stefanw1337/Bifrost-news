@@ -1,5 +1,39 @@
-import os, shutil, re
+import os, shutil, re, sys, subprocess
 from datetime import datetime
+
+# =====================================================================
+# AUTO-DEPENDENCY CHECKER
+# =====================================================================
+def ensure_dependencies():
+    # Check for playwright and beautifulsoup4 python modules
+    try:
+        import playwright
+        from bs4 import BeautifulSoup
+    except ImportError:
+        print("Missing Python modules. Installing playwright and beautifulsoup4...")
+        subprocess.check_call([sys.executable, "-m", "pip", "install", "playwright", "beautifulsoup4"])
+    
+    # Check if the specific Chromium binary for playwright exists
+    try:
+        from playwright.sync_api import sync_playwright
+        with sync_playwright() as p:
+            # Quick test launch to see if the browser binary is present
+            browser = p.chromium.launch(headless=True)
+            browser.close()
+    except Exception as e:
+        # If launching fails due to missing binaries, force install them
+        if "Executable doesn't exist" in str(e) or "browser" in str(e).lower():
+            print("Chromium browser binaries missing. Installing Playwright drivers...")
+            subprocess.check_call([sys.executable, "-m", "playwright", "install", "chromium"])
+        else:
+            raise e
+
+# Run the system check before executing any scraping logic
+ensure_dependencies()
+
+# =====================================================================
+# CORE SCRAPER LOGIC
+# =====================================================================
 import xml.etree.ElementTree as ET
 from playwright.sync_api import sync_playwright
 from bs4 import BeautifulSoup
@@ -28,19 +62,15 @@ try:
 
     announcements = []
     months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
-
-    # FIXED: Replaced deprecated text=True with string=True to kill the warning
     text_nodes = soup.find_all(string=True)
     
     for i, node in enumerate(text_nodes):
         text = node.strip()
-        
         if any(m in text for m in months) and (":" in text or "2026" in text):
             raw_timestamp = text
             author = ""
             message = ""
             
-            # 1. Author parsing
             for j in range(1, 5):
                 if i - j >= 0:
                     prev_text = text_nodes[i - j].strip()
@@ -49,7 +79,6 @@ try:
                             author = prev_text
                             break
             
-            # 2. Message parsing
             for k in range(1, 5):
                 if i + k < len(text_nodes):
                     next_text = text_nodes[i + k].strip()
@@ -75,10 +104,7 @@ try:
     count = 0
     for entry in announcements:
         item = ET.SubElement(channel, "item")
-        
-        # Combine using a standard newline layout
         combined_text = f"{entry['header']}\n{entry['body']}"
-        
         ET.SubElement(item, "title").text = combined_text
         ET.SubElement(item, "description").text = combined_text
         ET.SubElement(item, "link").text = URL
@@ -86,7 +112,6 @@ try:
         count += 1
         if count >= 10: break
 
-    # Write clean XML file directly without breaking the formatting strings
     tree = ET.ElementTree(rss)
     tree.write(OUTPUT_FILE, encoding="utf-8", xml_declaration=True)
     print(f"SUCCESS: Generated {count} formatted announcements without warnings.")
@@ -97,7 +122,6 @@ except Exception as e:
 try:
     s_dir = os.path.dirname(os.path.abspath(__file__))
     p_dir = os.path.dirname(s_dir)
-    shutil.move(OUTPUT_FILE, p_dir)
-    
+    shutil.copy(OUTPUT_FILE, p_dir)
 except Exception as ce:
     print(f"Copy missed: {ce}")
