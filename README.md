@@ -13,6 +13,6 @@ Will take a few seconds for Bifrost to launch with updated news.
 Made with Gemini's help for fun; All hail Gemeniah (and Jebediah)!
 
 Also may have to turn OFF "Enable Default News" under "Options", then "BiFrost". 
-In order to have server-by-server news. 
+In order to have server-by-server news, else the "Default News" overrides it.
 
 "Default News" rss works right now, but it's not as much details in every entry, like who and when.
